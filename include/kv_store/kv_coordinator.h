@@ -61,7 +61,9 @@ public:
     std::atomic<Status> status;
 
 private:
+    /** 提交 KV WAL 的线程 */
     void submitLogWrites();
+    /** 等待 KV WAL 提交完成 */
     void logWriteFutureLoop();
     void applyFutureLoop();
     void applyLoop();
@@ -113,6 +115,10 @@ private:
     std::mutex applyingKeysMtx;
     std::mutex applyIndexMapMtx;
 
+    /**
+     * 维护读写锁与读写任务引用计数
+     * 粗粒度写锁，细粒度读锁
+     */
     LockTable<KV_SIZE / 100> lockTable;
     std::mutex pendingAppliesMtx;
 

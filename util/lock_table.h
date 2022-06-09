@@ -36,10 +36,17 @@ class LockTable {
 public:
     LockTable() {}
 
+    /**
+     * 等待直至可以合法读映射到该哈希槽上的键，并上读锁
+     * 1. 等待直至该哈希槽上的所有写任务完成（写计数器归零）
+     * 2. 添加读任务（该键上的读任务计数器 +1，注意该引用计数是细粒度的）
+     * @param hash 键哈希（从而可以较粗粒度地管理键空间上的锁）
+     */
     void readLock(uint64_t hash) {
         LockTableEntry &tableEntry = lockTable[hash % SIZE];
         std::unique_lock<std::mutex> l(tableEntry.mtx);
         tableEntry.read_cv.wait(l, [&tableEntry,&hash]{return tableEntry.writers.find(hash) == tableEntry.writers.end();});
+        // 以下实际等效于 tableEntry.readers[hash]++;
         auto readerMapEntry = tableEntry.readers.find(hash);
         if (readerMapEntry == tableEntry.readers.end()) {
             tableEntry.readers[hash] = 1;
@@ -49,6 +56,10 @@ public:
         //tableEntry.readers++;
     }
 
+    /**
+     * 解读锁，若读引用清零，则唤醒同哈希槽上的其他读写任务
+     * @param hash 
+     */
     void readUnlock(uint64_t hash) {
         LockTableEntry &tableEntry = lockTable[hash % SIZE];
         std::unique_lock<std::mutex> l(tableEntry.mtx);
@@ -77,6 +88,10 @@ public:
         }
     }
 
+    /**
+     * 等待直至该哈希槽上无其他读写任务，并上写锁
+     * @param hash 
+     */
     void writeLock(uint64_t hash) {
         //LogInfo("Obtaining write lock for " << hash << " (" << hash % SIZE << ")");
         LockTableEntry &tableEntry = lockTable[hash % SIZE];
@@ -103,6 +118,10 @@ public:
         }
     }
 
+    /**
+     * 解写锁，放行同哈希槽上的其他读写任务
+     * @param hash 
+     */
     void writeUnlock(uint64_t hash) {
         LockTableEntry &tableEntry = lockTable[hash % SIZE];
         std::unique_lock<std::mutex> l(tableEntry.mtx);

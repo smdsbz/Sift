@@ -127,6 +127,21 @@ void KVCoordinator::submitLogWrites() {
             delete[] requestLogBuf;
         }
 
+        /**
+         * @note 注意 writeRequest() 的参数中 log=false。
+         *
+         * KV 层自己实现了一个 KV 数据的 WAL 日志（KV_LOG），这个日志也是放在 replicated
+         * memory（RM）空间上的。默认情况下 RM 空间上的所有写都是经过 replicationServer
+         * 走 Sift 主从复制协议的（基于 quorum 选举），但这里显式要求绕过 RM 层的 WAL
+         * 日志同步过程，而自己在 KV 层管理 WAL 日志写流程（否则写 KV WAL 这个操作本身作为
+         * RM 空间上的写操作，又会加到 RM 层 WAL，显然会导致日志双写）。
+         *
+         * 注意到 `include/memory_replication/coordinator_service.h/CoordinatorService::cache`
+         * 的存在，可能是原来希望在 Sift 层对 RM 空间上所有读写都做缓存，但后来发现没有必要
+         * （只用加速 KV 层操作日志就行了，后面的索引都是可重建的，这样关键路径上就只有
+         * 写 KV 数据到 KV WAL 的开销），随后又出于某些实现上的考虑单独把 KV WAL 的
+         * writeRequest() 流程上提到 KV 层来实现，形成了这里的 submitLogWrites() 实现。
+         */
         std::shared_ptr<RequestProcessor> rp = replicationServer->writeRequest(WRITE_AHEAD_LOG_OFFSET + (cindex % KV_LOG_SIZE) * sizeof(LogEntry::entry), buf, sizeof(LogEntry::entry) * queueSize, false, false);
         ble->setRequestProcessor(rp);
         logWriteFutureQueue.enqueue(ble);

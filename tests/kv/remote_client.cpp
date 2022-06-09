@@ -61,7 +61,8 @@ int main(int argc, char **argv) {
     uint64_t completed_puts = 0;
 
     for (int i = 0; i < num_ops; i++) {
-        int op = getOp();
+        int op = getOp();   // 操作类型（若小于 read_prob 则为读，否则为写）
+        /* 每次都是一个随机的键，不论该键是否已经存在 */
         std::string key("keykeykey" + std::to_string(dist(rng)));
 
         if (op < read_prob) {
