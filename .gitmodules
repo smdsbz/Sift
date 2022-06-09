@@ -1,9 +1,9 @@
 [submodule "third_party/rocksdb"]
 	path = third_party/rocksdb
-	url = https://github.com/facebook/rocksdb
+	url = git@github.com:facebook/rocksdb.git
 [submodule "third_party/cm256cc"]
 	path = third_party/cm256cc
-	url = https://github.com/f4exb/cm256cc
+	url = git@github.com:f4exb/cm256cc.git
 [submodule "third_party/farmhash"]
 	path = third_party/farmhash
-	url = https://github.com/google/farmhash
+	url = git@github.com:google/farmhash.git
